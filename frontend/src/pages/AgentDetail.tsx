@@ -1761,18 +1761,54 @@ export default function AgentDetail() {
                                     <div style={{ color: 'var(--text-tertiary)', textAlign: 'center', paddingTop: '80px', fontSize: '13px' }}>No messages</div>
                                 ) : (
                                     <div style={{ flex: 1, overflowY: 'auto', padding: '4px' }}>
-                                        {convMessages.map((m: any) => (
-                                            <div key={m.id} style={{ display: 'flex', flexDirection: m.role === 'assistant' ? 'row' : 'row-reverse', gap: '8px', marginBottom: '8px' }}>
-                                                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: m.role === 'assistant' ? 'rgba(224,238,238,0.15)' : 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>
-                                                    {m.role === 'assistant' ? 'A' : 'U'}
+                                        {convMessages.map((m: any) => {
+                                            // ── Tool call messages ──
+                                            if (m.role === 'tool_call') {
+                                                let parsed: any = {};
+                                                try { parsed = typeof m.content === 'string' ? JSON.parse(m.content) : m.content; } catch { parsed = { name: 'tool', result: m.content }; }
+                                                const tName = parsed.name || m.tool_name || 'tool';
+                                                const tArgs = parsed.args || parsed.arguments || {};
+                                                const tResult = parsed.result ?? parsed.output ?? '';
+                                                const isDone = parsed.status === 'done' || !!tResult;
+                                                const ts = m.created_at ? new Date(m.created_at).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+                                                return (
+                                                    <div key={m.id} style={{ display: 'flex', gap: '8px', marginBottom: '6px', paddingLeft: '36px' }}>
+                                                        <details style={{ flex: 1, borderRadius: '8px', background: 'var(--accent-subtle)', border: '1px solid var(--accent-subtle)', fontSize: '12px' }}>
+                                                            <summary style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none', listStyle: 'none' }}>
+                                                                <span style={{ fontSize: '13px' }}>{isDone ? '⚡' : '⏳'}</span>
+                                                                <span style={{ fontWeight: 600, color: 'var(--accent-text)' }}>{tName}</span>
+                                                                {Object.keys(tArgs).length > 0 && (
+                                                                    <span style={{ color: 'var(--text-tertiary)', fontSize: '11px', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                                                        {`(${Object.entries(tArgs).map(([k, v]) => `${k}: ${typeof v === 'string' ? v.slice(0, 30) : JSON.stringify(v)}`).join(', ')})`}
+                                                                    </span>
+                                                                )}
+                                                                {ts && <span style={{ color: 'var(--text-tertiary)', fontSize: '10px', marginLeft: 'auto', flexShrink: 0 }}>{ts}</span>}
+                                                            </summary>
+                                                            {tResult && (
+                                                                <div style={{ padding: '4px 10px 8px' }}>
+                                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '11px', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '240px', overflow: 'auto', background: 'rgba(0,0,0,0.15)', borderRadius: '4px', padding: '4px 6px' }}>
+                                                                        {typeof tResult === 'string' ? tResult : JSON.stringify(tResult, null, 2)}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </details>
+                                                    </div>
+                                                );
+                                            }
+                                            // ── Regular messages ──
+                                            return (
+                                                <div key={m.id} style={{ display: 'flex', flexDirection: m.role === 'assistant' ? 'row' : 'row-reverse', gap: '8px', marginBottom: '8px' }}>
+                                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: m.role === 'assistant' ? 'rgba(224,238,238,0.15)' : 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>
+                                                        {m.role === 'assistant' ? 'A' : 'U'}
+                                                    </div>
+                                                    <div style={{ maxWidth: '70%', padding: '8px 12px', borderRadius: '12px', background: m.role === 'assistant' ? 'var(--bg-secondary)' : 'rgba(224,238,238,0.15)', fontSize: '13px', lineHeight: '1.5', wordBreak: 'break-word' }}>
+                                                        {m.sender_name && <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginBottom: '2px' }}>{m.sender_name}</div>}
+                                                        {m.role === 'assistant' ? <MarkdownRenderer content={m.content} /> : <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>}
+                                                        <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '4px' }}>{m.created_at ? new Date(m.created_at).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}</div>
+                                                    </div>
                                                 </div>
-                                                <div style={{ maxWidth: '70%', padding: '8px 12px', borderRadius: '12px', background: m.role === 'assistant' ? 'var(--bg-secondary)' : 'rgba(224,238,238,0.15)', fontSize: '13px', lineHeight: '1.5', wordBreak: 'break-word' }}>
-                                                    {m.sender_name && <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginBottom: '2px' }}>{m.sender_name}</div>}
-                                                    {m.role === 'assistant' ? <MarkdownRenderer content={m.content} /> : <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>}
-                                                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '4px' }}>{m.created_at ? new Date(m.created_at).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}</div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
